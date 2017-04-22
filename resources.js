@@ -43,12 +43,12 @@ app.controller(
 								userData.$save();
 							}
 							userData.$bindTo($scope, "userData");
+							console.log(['$scope.userData', $scope.userData]);
+							if(!$scope.userData.transport_cost || $scope.userData.transport_cost < 5 || $scope.userData.transport_cost > 15)
+							{
+								$scope.userData.transport_cost = 15;
+							}
 						});
-						console.log(['$scope.userData', $scope.userData]);
-						if(!$scope.userData.transport_cost || $scope.userData.transport_cost < 5 || $scope.userData.transport_cost > 15)
-						{
-							$scope.userData.transport_cost = 15;
-						}
 					}
 					else
 					{
