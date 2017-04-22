@@ -1,0 +1,55 @@
+INPUT.factory_level
+{
+    width: 50px;
+}
+
+TD
+{
+    text-align: right;
+    padding: 3px 8px;
+}
+
+TD.l
+{
+    text-align: left;
+}
+
+THEAD TH
+{
+    background-color: #FFD;
+    border: solid gray 2px;
+}
+
+TD.neg
+{
+    color: red;
+}
+
+TR.best
+{
+    color: green;
+    font-weight: bold;
+}
+
+TR.odd, TR:nth-child(odd)
+{
+    background-color: #FFE;
+}
+
+TR.even, TR:nth-child(even)
+{
+    background-color: #EEF;
+}
+
+IMG.tr_icon
+{
+    height: 24px;
+    vertical-align: middle;
+    padding-left: 5px;
+}
+
+INPUT.add_button
+{
+    width: 5px;
+    padding: 0px;
+}

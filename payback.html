@@ -1,0 +1,87 @@
+<!doctype html>
+<html ng-app="angFireResources">
+	<head>
+		<meta charset="UTF-8">
+		<title>Angulare-Firebase Resours demo</title>
+		<script src="bower_components/angular/angular.min.js" ></script>
+		<script src="bower_components/firebase/firebase.js" ></script>
+		<script src="bower_components/angularfire/dist/angularfire.min.js" ></script>
+		<script src="bower_components/angular-ui-router/release/angular-ui-router.min.js" ></script>
+		<script src="resources.js" ></script>
+		<link href="resources.css" rel="stylesheet" />
+	</head>
+	<body ng-controller="Resources">
+		<h1>Payback for factories</h1>
+		<div ng-if="!signedIn && !signingIn">
+			<button ng-click="signIn()">Sign In</button>
+		</div>
+		<div ng-if="signedIn">Inloggad som <span ng-bind="username"></span> <button ng-click="signOut()">Sign Out</button></div>
+		<!-- TODO: format 0% -->
+		<div ng-if="userData">
+			<label>
+				<span>Transportkostnad</span>
+				<input ng-model="userData.transport_cost"/>
+			</label>
+		</div>
+		<table>
+			<thead>
+				<tr>
+					<th colspan="2">Base</th>
+					<th colspan="2">Current</th>
+					<th colspan="2">Next Level</th>
+					<th colspan="3">Payback</th>
+					<th colspan="2">Upgrade</th>
+				</tr>
+				<tr>
+					<th>Level</th>
+					<th>Factory name</th>
+
+					<th>Turnover</th>
+					<th>Profit</th>
+
+					<th>Turnover</th>
+					<th>Profit</th>
+
+					<th>Inc</th>
+					<th>Days</th>
+					<th>Rank</th>
+
+					<th>Cost</th>
+					<th>Mats</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr ng-if="!factories.$resolved"><td colspan="*">Loading...</td></tr>
+				<tr ng-repeat="factory in factories" ng-if="factories.$resolved" data-factory-row-nr="{{getObjectKeys(factory.out)[0]}}">
+					<td>
+						<input class="factory_level" ng-model="userData.factoryLevel[getObjectKeys(factory.out)[0]]" />
+						<input class="add_button" value="+" onclick="var i = this.previousElementSibling; i.value = 1 + parseInt(i.value); i.onchange();" type="button" />
+					</td>
+					<td class="l">
+						<img ng-src="https://www.resources-game.ch/images/appimages/res{{getObjectKeys(factory.out)[0]}}.png" title="Bricks" class="tr_icon">
+						<span ng-bind="factory.name"></span>
+					</td>
+					<td class="factory_turnover" ng-bind="nrformat(factorytools.turnover(factory, itemValues, userData.factoryLevel[getObjectKeys(factory.out)[0]]))"></td>
+					<td class="factory_profit" ng-bind="nrformat(factorytools.profit(factory, itemValues, userData.factoryLevel[getObjectKeys(factory.out)[0]], userData.transport_cost))"></td>
+					<td class="upgrade_turnover" ng-bind="nrformat(factorytools.turnover(factory, itemValues, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0)))"></td>
+					<td class="upgrade_profit" ng-bind="nrformat(factorytools.profit(factory, itemValues, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0), userData.transport_cost))"></td>
+					<td class="upgrade_profit_inc" ng-bind="nrformat(factorytools.profit(factory, itemValues, 1, userData.transport_cost))"></td>
+					<td class="upgrade_payback" ng-bind="factorytools.payback(factory, itemValues, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0), userData.transport_cost, 2)"></td>
+					<td class="upgrade_rank" ng-bind="factorytools.rank(factory, factories, itemValues, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0), userData.transport_cost)"></td>
+					<td class="upgrade_cost" ng-bind="nrformat(factorytools.upgrade(factory, itemValues, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0), userData.transport_cost))"></td>
+					<td class="l upgrade_mats">
+						<!-- TODO loop-->
+						<img
+							ng-repeat-start="resource_id in getObjectKeys(factory.upgrade)"
+							ng-src="https://www.resources-game.ch/images/appimages/res{{resource_id}}.png"
+							title="{{nrformat(factorytools.upgradeResourceAmount(resource_id, factory, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0)))}} {{itemNames[resource_id]}}, {{nrformat(factorytools.upgradeResourceAmount(resource_id, factory, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0), itemValues))}} {{itemNames[1]}}"
+							class="tr_icon"
+						/>
+						<span ng-bind="nrformat(factorytools.upgradeResourceAmount(resource_id, factory, 1 + (userData.factoryLevel[getObjectKeys(factory.out)[0]] || 0)))"></span>
+						<br ng-repeat-end />
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</body>
+</html>
