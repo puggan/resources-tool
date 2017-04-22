@@ -1,0 +1,21 @@
+{
+  "name": "ang_res",
+  "authors": [
+    "Thorbjörn Backlund <thorbjorn@spiro.se>"
+  ],
+  "description": "Demo Project with Angular and Firebase for the game Resources",
+  "main": "index.html",
+  "license": "MIT",
+  "homepage": "https://ssl.puggan.se/ang_res/",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angularfire": "^2.3.0",
+    "angular-ui-router": "ui-router#^0.4.2"
+  }
+}
