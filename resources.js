@@ -37,7 +37,7 @@ app.controller(
 						var userData = $firebaseObject($scope.db.child('userData/' + firebaseUser.uid));
 						userData.$loaded().then(function()
 						{
-							if(!userData.$value)
+							if(!userData.transport_cost)
 							{
 								userData.transport_cost = 15;
 								userData.$save();
@@ -161,9 +161,9 @@ app.controller(
 					if(!level) return 0;
 					return factory.upgrade[resource_id] * level * level;
 				},
-				upgradeResourceValue: function(resource_id, factory, level, itemValues) {
+				upgradeResourceValue: function(resource_id, factory, level, itemValues, transport_cost) {
 					if(!level) return 0;
-					return this.upgradeResourceAmount(resource_id, factory, level) * itemValues[resource_id];
+					return this.upgradeResourceAmount(resource_id, factory, level) * itemValues[resource_id] * (resource_id === 1 ? 1 : (100 + transport_cost)/100);
 				},
 				payback: function(factory, itemValues, level, transport_cost, decimals)
 				{
