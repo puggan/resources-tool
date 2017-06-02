@@ -11,77 +11,315 @@
 		<link href="resources.css" rel="stylesheet" />
 	</head>
 	<body ng-controller="Resources">
-		<h1>Payback for factories</h1>
+		<h1>Resources Tools</h1>
 		<div ng-if="!signedIn && !signingIn">
 			<button ng-click="signIn()">Sign In</button>
 		</div>
 		<div ng-if="signedIn">Inloggad som <span ng-bind="username"></span> <button ng-click="signOut()">Sign Out</button></div>
 		<!-- TODO: format 0% -->
-		<div ng-if="userData">
-			<label>
-				<span>Transportkostnad</span>
-				<input ng-model="userData.transport_cost"/>
-			</label>
+		<ul class="tabmenu">
+			<li ng-class="tab == 'Production' && 'selected'">
+				<label>
+					<span>Production</span>
+					<input type="radio" value="Production" ng-model="tab" style="display: none;" />
+				</label>
+			</li>
+			<li ng-class="tab == 'Payback' && 'selected'">
+				<label>
+					<span>Upgrade Payback</span>
+					<input type="radio" value="Payback" ng-model="tab" style="display: none;" />
+				</label>
+			</li>
+			<li ng-class="tab == 'Units' && 'selected'">
+				<label>
+					<span>Units</span>
+					<input type="radio" value="Units" ng-model="tab" style="display: none;" />
+				</label>
+			</li>
+			<li ng-class="tab == 'Recycling' && 'selected'">
+				<label>
+					<span>Recycling</span>
+					<input type="radio" value="Recycling" ng-model="tab" style="display: none;" />
+				</label>
+			</li>
+			<li ng-class="tab == 'Flow' && 'selected'">
+				<label>
+					<span>Resource Flow</span>
+					<input type="radio" value="Flow" ng-model="tab" style="display: none;" />
+				</label>
+			</li>
+		</ul>
+		<br style="clear: both;" />
+		<div ng-if="itemValues.$resolved && tab == 'Production'">
+			<h2>Production for factories</h2>
+			<div>
+				<label>
+					<span>Transportkostnad</span>
+					<input type="number" ng-model="userData.transport_cost"/>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th colspan="5">Base</th>
+						<th colspan="3">1 Hour</th>
+						<th colspan="3">24 Hours</th>
+						<th colspan="3">5 Days</th>
+						<th colspan="2">Profit</th>
+					</tr>
+					<tr>
+						<th>Level</th>
+						<th>Factory name</th>
+						<th>Cost</th>
+						<th>Produced</th>
+						<th>Profit</th>
+
+						<th>Cost</th>
+						<th>Produced</th>
+						<th>Profit</th>
+
+						<th>Cost</th>
+						<th>Produced</th>
+						<th>Profit</th>
+
+						<th>Cost</th>
+						<th>Produced</th>
+						<th>Profit</th>
+
+						<th>%</th>
+						<th>Rank</th>
+					</tr>
+				</thead>
+				<tbody id="factory_list">
+					<tr ng-repeat="factory in factory_list(factories, userData.factoryLevel, itemValues, userData.transport_cost) | orderBy:'-profit'" data-factory-row-nr="{{factory.factory_id}}">
+						<td>
+							<input class="factory_level" type="number" ng-model="userData.factoryLevel[factory.factory_id]" />
+							<input class="add_button" value="+" ng-click="userData.factoryLevel[factory.factory_id] = userData.factoryLevel[factory.factory_id] + 1" type="button" />
+						</td>
+						<td class="l">
+							<img ng-src="https://www.resources-game.ch/images/appimages/res{{factory.factory_id}}.png" title="{{itemNames[factory.factory_id]}}" class="tr_icon">
+							<span ng-bind="factory.name"></span>
+						</td>
+						<td class="l base_cost">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.in)" resource="resource_id", amount="factory.in[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="l base_produced">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.out)" resource="resource_id", amount="factory.out[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="base_profit" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="nrformat(factory.profit_base)"></td>
+
+						<td class="l hour_cost">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.in)" resource="resource_id", amount="factory.speed * factory.level * factory.in[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="l hour_produced">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.out)" resource="resource_id", amount="factory.speed * factory.level * factory.out[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="hour_profit" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="nrformat(factory.profit)"></td>
+
+						<td class="l day_cost">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.in)" resource="resource_id", amount="24 * factory.speed * factory.level * factory.in[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="l day_produced">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.out)" resource="resource_id", amount="24 * factory.speed * factory.level * factory.out[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="day_profit" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="nrformat(factory.profit * 24)"></td>
+
+						<td class="l week_cost">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.in)" resource="resource_id", amount="5 * 24 * factory.speed * factory.level * factory.in[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="l week_produced">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.out)" resource="resource_id", amount="5 * 24 * factory.speed * factory.level * factory.out[resource_id]"></resource>
+							<br ng-repeat-end />
+						</td>
+
+						<td class="week_profit" ng-class="(factory.profit_base < 0 && 'neg' || '') + (factory.profit_rank > 0 && factory.profit_rank < 11 && 'good' || '')" ng-bind="nrformat(factory.profit * 24 * 5)"></td>
+						<!-- td class="profit_procent" ng-bind="(factory.profit_percent > 100 ? parseInt(factory.profit_percent) : factory.profit_percent.toPrecision(3)) + '%'"></td -->
+						<td class="profit_procent" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="procentformat(factory.profit_percent)"></td>
+						<td class="profit_rank" ng-class="(factory.profit_rank > 0 && factory.profit_rank < 11 && 'good')" ng-bind="factory.profit_rank"></td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
-		<table>
-			<thead>
-				<tr>
-					<th colspan="2">Base</th>
-					<th colspan="2">Current</th>
-					<th colspan="2">Next Level</th>
-					<th colspan="3">Payback</th>
-					<th colspan="2">Upgrade</th>
-				</tr>
-				<tr>
-					<th>Level</th>
-					<th>Factory name</th>
+		<div ng-if="itemValues.$resolved && tab == 'Payback'">
+			<h2>Payback for factories</h2>
+			<div>
+				<label>
+					<span>Transportkostnad</span>
+					<input type="number" ng-model="userData.transport_cost"/>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th colspan="2">Base</th>
+						<th colspan="2">Current</th>
+						<th colspan="2">Next Level</th>
+						<th colspan="3">Payback</th>
+						<th colspan="2">Upgrade</th>
+					</tr>
+					<tr>
+						<th>Level</th>
+						<th>Factory name</th>
 
-					<th>Turnover</th>
-					<th>Profit</th>
+						<th>Turnover</th>
+						<th>Profit</th>
 
-					<th>Turnover</th>
-					<th>Profit</th>
+						<th>Turnover</th>
+						<th>Profit</th>
 
-					<th>Inc</th>
-					<th>Days</th>
-					<th>Rank</th>
+						<th>Inc</th>
+						<th>Days</th>
+						<th>Rank</th>
 
-					<th>Cost</th>
-					<th>Mats</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr ng-if="!factories.$resolved"><td colspan="*">Loading...</td></tr>
-				<tr ng-repeat="(factory_id, factory) in factories" ng-if="factories.$resolved" data-factory-row-nr="{{factory_id}}">
-					<td>
-						<input class="factory_level" type="number" ng-model="userData.factoryLevel[factory_id]" />
-						<input class="add_button" value="+" onclick="var i = this.previousElementSibling; i.value = 1 + parseInt(i.value); i.onchange();" type="button" />
-					</td>
-					<td class="l">
-						<img ng-src="https://www.resources-game.ch/images/appimages/res{{factory_id}}.png" title="Bricks" class="tr_icon">
-						<span ng-bind="factory.name"></span>
-					</td>
-					<td class="factory_turnover" ng-bind="nrformat(factorytools.turnover(factory, itemValues, userData.factoryLevel[factory_id]))"></td>
-					<td class="factory_profit" ng-bind="nrformat(factorytools.profit(factory, itemValues, userData.factoryLevel[factory_id], userData.transport_cost))"></td>
-					<td class="upgrade_turnover" ng-bind="nrformat(factorytools.turnover(factory, itemValues, 1 + (userData.factoryLevel[factory_id] || 0)))"></td>
-					<td class="upgrade_profit" ng-bind="nrformat(factorytools.profit(factory, itemValues, 1 + (userData.factoryLevel[factory_id] || 0), userData.transport_cost))"></td>
-					<td class="upgrade_profit_inc" ng-bind="nrformat(factorytools.profit(factory, itemValues, 1, userData.transport_cost))"></td>
-					<td class="upgrade_payback" ng-bind="factorytools.payback(factory, itemValues, 1 + (userData.factoryLevel[factory_id] || 0), userData.transport_cost, 2)"></td>
-					<td class="upgrade_rank" ng-bind="factorytools.rank(factory, factories, itemValues, 1 + (userData.factoryLevel[factory_id] || 0), userData.transport_cost)"></td>
-					<td class="upgrade_cost" ng-bind="nrformat(factorytools.upgrade(factory, itemValues, 1 + (userData.factoryLevel[factory_id] || 0), userData.transport_cost))"></td>
-					<td class="l upgrade_mats">
-						<!-- TODO loop-->
-						<img
-							ng-repeat-start="resource_id in getObjectKeys(factory.upgrade)"
-							ng-src="https://www.resources-game.ch/images/appimages/res{{resource_id}}.png"
-							title="{{nrformat(factorytools.upgradeResourceAmount(resource_id, factory, 1 + (userData.factoryLevel[factory_id] || 0)))}} {{itemNames[resource_id]}}, {{nrformat(factorytools.upgradeResourceValue(resource_id, factory, 1 + (userData.factoryLevel[factory_id] || 0), itemValues, userData.transport_cost))}} {{itemNames[1]}}"
-							class="tr_icon"
-						/>
-						<span ng-bind="nrformat(factorytools.upgradeResourceAmount(resource_id, factory, 1 + (userData.factoryLevel[factory_id] || 0)))"></span>
-						<br ng-repeat-end />
-					</td>
-				</tr>
-			</tbody>
-		</table>
+						<th>Cost</th>
+						<th>Mats</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="factory in factory_list(factories, userData.factoryLevel, itemValues, userData.transport_cost) | orderBy:'payback_rank_sort'" data-factory-row-nr="{{factory.factory_id}}">
+						<td>
+							<input class="factory_level" type="number" ng-model="userData.factoryLevel[factory.factory_id]" />
+							<input class="add_button" value="+" ng-click="userData.factoryLevel[factory.factory_id] = userData.factoryLevel[factory.factory_id] + 1" type="button" />
+						</td>
+						<td class="l">
+							<img ng-src="https://www.resources-game.ch/images/appimages/res{{factory.factory_id}}.png" title="{{itemNames[factory.factory_id]}}" class="tr_icon">
+							<span ng-bind="factory.name"></span>
+						</td>
+
+						<td class="factory_turnover" ng-bind="nrformat(factory.turnover)"></td>
+						<td class="factory_profit" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="nrformat(factory.profit)"></td>
+
+						<td class="upgrade_turnover" ng-bind="nrformat(factory.next_turnover)"></td>
+						<td class="upgrade_profit" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="nrformat(factory.next_profit)"></td>
+
+						<td class="upgrade_profit_inc" ng-class="factory.profit_base < 0 && 'neg'" ng-bind="nrformat(factory.next_profit - factory.profit)"></td>
+						<td class="upgrade_payback" ng-bind="nrformat(factory.payback)" title="{{ nrformat(factory.payback / 7) + " weeks"}}"></td>
+						<td class="upgrade_rank" ng-bind="factory.payback_rank"></td>
+
+						<td class="upgrade_cost" ng-bind="nrformat(factory.upgrade_total)"></td>
+						<td class="l upgrade_mats">
+							<resource ng-repeat-start="resource_id in getObjectKeys(factory.upgrade)" resource="resource_id", amount="factory.upgrade_resources[resource_id].next_count"></resource>
+							<br ng-repeat-end />
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div ng-if="itemValues.$resolved && tab == 'Units'">
+			<h2>Military Units</h2>
+			<div>
+				<label>
+					<span>Transportkostnad</span>
+					<input type="number" ng-model="userData.transport_cost"/>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th colspan="2">Cost</th>
+						<th>Produced</th>
+						<th>Marketprice</th>
+						<th colspan="2">Profit</th>
+						<th>Power</th>
+						<th>Price/Power</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="ur in unit_list(units, itemValues, userData.transport_cost) | orderBy:'-profit_procent'">
+						<td class="cost">
+							<resource ng-repeat-start="ur_in in ur.in" resource="ur_in.item_id", amount="ur_in.count"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="cost_credits" ng-bind="nrformat(ur.in_buy_value)"></td>
+						<td class="produced">
+							<resource ng-repeat-start="ur_out in ur.out" resource="ur_out.item_id", amount="ur_out.count"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="produced_credits" ng-bind="nrformat(ur.out_value)"></td>
+						<td class="profit" ng-bind="nrformat(ur.profit)"></td>
+						<td class="profit_procent" ng-bind="procentformat(ur.profit_procent)"></td>
+						<td class="power" ng-bind="nrformat(ur.a)"></td>
+						<td class="power_credits" ng-bind="nrformat(ur.in_buy_value / ur.aa)"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div ng-if="itemValues.$resolved && tab == 'Recycling'">
+			<h2>Recycling loot</h2>
+			<div>
+				<label>
+					<span>Transportkostnad</span>
+					<input type="number" ng-model="userData.transport_cost"/>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>Cost</th>
+						<th>Produced</th>
+						<th>Profit</th>
+						<th>Profit % </th>
+						<th>Profit / M</th>
+						<th>Max Price</th>
+					</tr>
+				</thead>
+				<tbody id="recycling_list">
+					<tr ng-repeat="rr in recycling_list(recycling, itemValues, userData.transport_cost) | orderBy:'-profit_procent'">
+						<td class="cost">
+							<resource resource="rr.id", amount="rr.in_count"></resource>
+						</td>
+						<td class="produced">
+							<resource ng-repeat-start="rr_out in rr.out" resource="rr_out.item_id", amount="rr_out.count"></resource>
+							<br ng-repeat-end />
+						</td>
+						<td class="profit" ng-bind="nrformat(rr.profit)"></td>
+						<td class="profit_procent" ng-bind="procentformat(rr.profit_procent)"></td>
+						<td class="profit_million" ng-bind="nrformat(rr.profit * 1000000 / rr.in_count )"></td>
+						<td class="price" ng-bind="nrformat(rr.max_price)"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div ng-if="itemValues.$resolved && tab == 'Flow'">
+			<h2>Resources Flow</h2>
+			<div>
+				<label>
+					<span>Transportkostnad</span>
+					<input type="number" ng-model="userData.transport_cost"/>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Used / in</th>
+						<th>Produced / out</th>
+						<th>flow</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="rf in resources_flow(itemValues, units, factories, userData.factoryLevel, userData.transport_cost) | orderBy:'id'" class="{{rf.status}}">
+						<td style="text-align: left;">
+							<img ng-src="https://www.resources-game.ch/images/appimages/res{{rf.id}}.png" title="{{itemNames[rf.factory_id]}}" class="tr_icon">
+							<span ng-bind="itemNames[rf.id]"></span>
+						</td>
+						<td ng-bind="rf.type"></td>
+						<td ng-bind="nrformat(rf.in)"></td>
+						<td ng-bind="nrformat(rf.out)"></td>
+						<td ng-bind="nrformat(rf.out - rf.in)"></td>
+						<td ng-bind="rf.status" class="{{rf.status}}"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 	</body>
 </html>
