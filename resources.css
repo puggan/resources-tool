@@ -1,4 +1,5 @@
-INPUT.factory_level
+INPUT.factory_level,
+INPUT.wherehouse_level
 {
     width: 50px;
 }
@@ -31,6 +32,11 @@ TR.best, TD.good
     font-weight: bold;
 }
 
+TR.buy
+{
+    color: orange;
+}
+
 TR.odd, TR:nth-child(odd)
 {
     background-color: #FFE;
@@ -50,7 +56,7 @@ IMG.tr_icon
 
 INPUT.add_button
 {
-    width: 5px;
+    width: 20px;
     padding: 0px;
 }
 

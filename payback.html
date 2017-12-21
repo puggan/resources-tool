@@ -13,11 +13,18 @@
 	<body ng-controller="Resources">
 		<h1>Resources Tools</h1>
 		<div ng-if="!signedIn && !signingIn">
-			<button ng-click="signIn()">Sign In</button>
+			<button ng-click="signIn('google')">Sign In with Google</button>
+			<button ng-click="signIn('facebook')">Sign In with Facebook</button>
 		</div>
 		<div ng-if="signedIn">Inloggad som <span ng-bind="username"></span> <button ng-click="signOut()">Sign Out</button></div>
 		<!-- TODO: format 0% -->
 		<ul class="tabmenu">
+			<li ng-class="tab == 'Flow' && 'selected'">
+				<label>
+					<span>Resource Flow</span>
+					<input type="radio" value="Flow" ng-model="tab" style="display: none;" />
+				</label>
+			</li>
 			<li ng-class="tab == 'Production' && 'selected'">
 				<label>
 					<span>Production</span>
@@ -42,19 +49,100 @@
 					<input type="radio" value="Recycling" ng-model="tab" style="display: none;" />
 				</label>
 			</li>
-			<li ng-class="tab == 'Flow' && 'selected'">
-				<label>
-					<span>Resource Flow</span>
-					<input type="radio" value="Flow" ng-model="tab" style="display: none;" />
-				</label>
-			</li>
 		</ul>
 		<br style="clear: both;" />
-		<div ng-if="itemValues.$resolved && tab == 'Production'">
+		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Flow'">
+			<h2>Resources Flow</h2>
+			<div>
+				<label>
+					<span>Transport cost</span>
+					<input type="number" ng-model="userData.transport_cost"/>
+				</label>
+				<label>
+					<span>Timeview</span>
+					<select type="number" ng-model="userData.flow_time">
+						<option value="1">1 Hour</option>
+						<option value="24">1 Day</option>
+						<option value="120">5 Days</option>
+						<option value="168">1 week</option>
+						<option value="336">2 weeks</option>
+						<option value="672">4 weeks</option>
+						<option value="720">30 Days</option>
+						<option value="8760">1 year</option>
+					</select>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Produced</th>
+						<th>Used</th>
+						<th>Flow</th>
+						<th>Credits</th>
+						<th>Status</th>
+						<th>Wharehouse</th>
+						<th>Storeage</th>
+						<th>Fill time</th>
+						<th>Empty time</th>
+						<th>Delta time</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="rf in resources_flow(itemValues, units, factories, userData.factoryLevel, userData.transport_cost, userData.mines) | orderBy:'sort_value'" class="{{rf.status}}">
+						<td style="text-align: left;">
+							<img ng-src="https://www.resources-game.ch/images/appimages/res{{rf.id}}.png" title="{{itemNames[rf.id]}}" class="tr_icon">
+							<span ng-bind="itemNames[rf.id]"></span>
+						</td>
+						<td ng-bind="rf.type"></td>
+						<td ng-if="rf.id > 1 && rf.type == 'resource'">
+							<img src="pencil.png" ng-click="ask_mine(rf.id)" style="float: left;"/>
+							<span ng-bind="nrformat(rf.out * userData.flow_time)"></span>
+						</td>
+						<td ng-if="rf.id == 1">(<span ng-bind="nrformat(sums.flow.profit * userData.flow_time)" style="color: gray; font-size: smaller;"></span>)</td>
+						<td ng-if="rf.type != 'resource'" ng-bind="nrformat(rf.out * userData.flow_time)"></td>
+						<td ng-bind="nrformat(rf.in * userData.flow_time)"></td>
+						<td ng-bind="nrformat((rf.out - rf.in) * userData.flow_time)"></td>
+						<td ng-bind="nrformat(rf.profit * userData.flow_time)"></td>
+						<td ng-bind="rf.status" class="{{rf.status}}"></td>
+						<td>
+							<input ng-if="rf.id > 1" class="wherehouse_level" type="number" ng-model="userData.wherehouse[rf.id]" />
+						</td>
+						<td><span ng-if="(userData.wherehouse[rf.id] || 0) > 0" ng-bind="nrformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id])"></span></td>
+						<td><span ng-if="rf.out > 0 && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.out)"></span></td>
+						<td><span ng-if="rf.in > 0 && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.in)"></span></td>
+						<td>
+							<span ng-if="rf.out > 0 && rf.in > 0 && rf.out != rf.in && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / (rf.out - rf.in))"></span>
+						</td>
+					</tr>
+				</tbody>
+				<tfoot>
+					<tr>
+						<td style="text-align: left;">
+							<img ng-src="https://www.resources-game.ch/images/appimages/res1.png" title="Sum" class="tr_icon">
+							<span>Sum</span>
+						</td>
+						<td></td>
+						<td ng-bind="nrformat(sums.flow.out * userData.flow_time)"></td>
+						<td ng-bind="nrformat(sums.flow.in * userData.flow_time)"></td>
+						<td></td>
+						<td ng-bind="nrformat(sums.flow.profit * userData.flow_time)"></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+				</tfoot>
+			</table>
+		</div>
+		<div ng-if="itemValues.$resolved && !userData.fake && tab == 'Production'">
 			<h2>Production for factories</h2>
 			<div>
 				<label>
-					<span>Transportkostnad</span>
+					<span>Transport cost</span>
 					<input type="number" ng-model="userData.transport_cost"/>
 				</label>
 			</div>
@@ -147,11 +235,11 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && tab == 'Payback'">
+		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Payback'">
 			<h2>Payback for factories</h2>
 			<div>
 				<label>
-					<span>Transportkostnad</span>
+					<span>Transport cost</span>
 					<input type="number" ng-model="userData.transport_cost"/>
 				</label>
 			</div>
@@ -212,11 +300,11 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && tab == 'Units'">
+		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Units'">
 			<h2>Military Units</h2>
 			<div>
 				<label>
-					<span>Transportkostnad</span>
+					<span>Transport cost</span>
 					<input type="number" ng-model="userData.transport_cost"/>
 				</label>
 			</div>
@@ -251,11 +339,11 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && tab == 'Recycling'">
+		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Recycling'">
 			<h2>Recycling loot</h2>
 			<div>
 				<label>
-					<span>Transportkostnad</span>
+					<span>Transport cost</span>
 					<input type="number" ng-model="userData.transport_cost"/>
 				</label>
 			</div>
@@ -287,39 +375,6 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && tab == 'Flow'">
-			<h2>Resources Flow</h2>
-			<div>
-				<label>
-					<span>Transportkostnad</span>
-					<input type="number" ng-model="userData.transport_cost"/>
-				</label>
-			</div>
-			<table>
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Type</th>
-						<th>Used / in</th>
-						<th>Produced / out</th>
-						<th>flow</th>
-						<th>Status</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr ng-repeat="rf in resources_flow(itemValues, units, factories, userData.factoryLevel, userData.transport_cost) | orderBy:'id'" class="{{rf.status}}">
-						<td style="text-align: left;">
-							<img ng-src="https://www.resources-game.ch/images/appimages/res{{rf.id}}.png" title="{{itemNames[rf.factory_id]}}" class="tr_icon">
-							<span ng-bind="itemNames[rf.id]"></span>
-						</td>
-						<td ng-bind="rf.type"></td>
-						<td ng-bind="nrformat(rf.in)"></td>
-						<td ng-bind="nrformat(rf.out)"></td>
-						<td ng-bind="nrformat(rf.out - rf.in)"></td>
-						<td ng-bind="rf.status" class="{{rf.status}}"></td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
+
 	</body>
 </html>

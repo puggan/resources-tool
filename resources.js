@@ -24,6 +24,55 @@ app.controller(
 			$scope.signedIn = false;
 			$scope.signingIn = true;
 			$scope.username = 'Anonymous';
+			$scope.sums = {flow: {in: 0, out: 0, profit: 0}};
+			$scope.cache = {};
+			var loadUserdata = function(uid) {
+				if(!uid) {
+					$scope.userData = {transport_cost: 15, flow_time: "1", factoryLevel: {}, mines: {}, warehouse: {}, fake: true};
+					return $scope.userData;
+				}
+				var userData = $firebaseObject($scope.db.child('userData/' + uid));
+				userData.$loaded()
+					.then(function()
+					{
+						var updated = false;
+						if(!userData.transport_cost)
+						{
+							userData.transport_cost = 15;
+							updated = true;
+						}
+						if(!userData.flow_time)
+						{
+							userData.flow_time = 1;
+							updated = true;
+						}
+						if(!userData.mines)
+						{
+							userData.mines = {};
+							updated = true;
+						}
+						if(!userData.warehouse)
+						{
+							userData.warehouse = {};
+							updated = true;
+						}
+						if(!userData.factoryLevel)
+						{
+							userData.factoryLevel = {};
+							updated = true;
+						}
+						if(updated)
+						{
+							userData.$save();
+						}
+						userData.$bindTo($scope, "userData");
+						if(!$scope.userData.transport_cost || $scope.userData.transport_cost < 5 || $scope.userData.transport_cost > 15)
+						{
+							$scope.userData.transport_cost = 15;
+						}
+					});
+				return $scope.userData;
+			};
 
 			$scope.authObj.$onAuthStateChanged(
 				function(firebaseUser)
@@ -34,28 +83,27 @@ app.controller(
 						console.log(firebaseUser);
 						$scope.signedIn = true;
 						$scope.username = firebaseUser.displayName;
-						var userData = $firebaseObject($scope.db.child('userData/' + firebaseUser.uid));
-						userData.$loaded()
-							.then(function()
-							{
-								if(!userData.transport_cost)
-								{
-									userData.transport_cost = 15;
-									userData.$save();
-								}
-								userData.$bindTo($scope, "userData");
-								if(!$scope.userData.transport_cost || $scope.userData.transport_cost < 5 || $scope.userData.transport_cost > 15)
-								{
-									$scope.userData.transport_cost = 15;
-								}
-							});
+
+						var linkedUser = $firebaseObject($scope.db.child('userLinks/' + firebaseUser.uid));
+						linkedUser
+							.$loaded()
+							.then(function() {
+								if(linkedUser.$value)
+									loadUserdata(linkedUser.$value);
+								else
+									loadUserdata(firebaseUser.uid);
+							})
+							.catch(function() {
+								loadUserdata(firebaseUser.uid);
+							})
+						;
 					}
 					else
 					{
 						console.log("Signed out");
 						$scope.signedIn = false;
 						$scope.username = 'Anonymous';
-						$scope.userData = {"transport_cost": 15};
+						loadUserdata(null);
 					}
 					$scope.signingIn = false;
 				}
@@ -66,10 +114,10 @@ app.controller(
 				$scope.authObj.$signOut();
 			};
 
-			$scope.signIn = function()
+			$scope.signIn = function(auth_provider)
 			{
 				$scope.authObj
-					.$signInWithRedirect("google")
+					.$signInWithRedirect(auth_provider)
 					.catch(function(error)
 						{
 							console.error("Authentication failed:", error);
@@ -85,7 +133,7 @@ app.controller(
 			$scope.units = $firebaseObject(gameData.child('units'));
 			$scope.itemNames = $firebaseObject(gameData.child('items'));
 			$scope.itemValues = $firebaseObject($scope.db.child('apiData/itemValues'));
-			$scope.userData = {"transport_cost": 15};
+			$scope.userData = {transport_cost: 15, flow_time: "1", factoryLevel: {}, mines: {}, fake: true};
 			$scope.getObjectKeys = function(o)
 			{
 				return Object.keys(o);
@@ -116,9 +164,13 @@ app.controller(
 				{
 					return nr.toPrecision(3) + sufix_list[sufix_nr];
 				}
-				else
+				else if(org_nr.toPrecision)
 				{
 					return org_nr.toPrecision(3);
+				}
+				else
+				{
+					return org_nr;
 				}
 			};
 			$scope.procentformat = function(org_nr, append = '%')
@@ -138,15 +190,29 @@ app.controller(
 					return Math.round(org_nr) + append;
 				}
 			};
+			$scope.timeformat = function(hours)
+			{
+				if(hours < 0) return '-' + $scope.timeformat(-hours);
+				let v = 3600 * hours;
+				if(v < 60) return v + ' s';
+				if(v < 60 * 60) return Math.floor(v / 60) + ' m ' + Math.floor(v % 60) + ' s';
+				v = v / 60;
+				if(v < 24 * 60) return Math.floor(v / 60) + ' h ' + Math.floor(v % 60) + ' m';
+				v = v / 60;
+				if(v < 31 * 24) return Math.floor(v / 24) + ' d ' + Math.floor(v % 24) + ' h';
+				v = v / 24;
+				if(v < 7 * 52) return Math.floor(v / 7) + ' w ' + Math.floor(v % 24) + ' d';
+				return Math.floor(v / 365) + ' y ' + Math.floor((v % 365)/7) + ' w';
+			};
 			$scope.titleformat = function(resource_id, amount, itemvalue, itemNames)
 			{
-				if(resource_id == 1)
+				if(resource_id === 1 || resource_id === '1')
 				{
 					return this.nrformat(amount) + ' ' + itemNames[1];
 				}
 				return this.nrformat(amount) + ' ' + itemNames[resource_id] + ' = ' + this.nrformat(amount * itemvalue) + ' ' + itemNames[1];
 
-			}
+			};
 			$scope.factory_list = function(factories, factory_levels, itemValues, transport_cost)
 			{
 				var factory_list = [];
@@ -274,7 +340,20 @@ app.controller(
 						factory_rank.payback_rank_sort = factory_count + factory.pos;
 					}
 				}
-				return factory_list;
+
+				// compare with cache, return cache if equal, so angular don't get stuck in: "Error: $rootScope:infdig"
+				if($scope.cache.factories)
+				{
+					if(angular.toJson($scope.cache.factories) !== angular.toJson(factory_list))
+					{
+						$scope.cache.factories = factory_list;
+					}
+				}
+				else
+				{
+					$scope.cache.factories = factory_list;
+				}
+				return $scope.cache.factories;
 			};
 			$scope.recycling_list = function(recycling, itemValues, transport_cost)
 			{
@@ -314,7 +393,20 @@ app.controller(
 					},
 					recycling_list
 				);
-				return recycling_list;
+
+				// compare with cache, return cache if equal, so angular don't get stuck in: "Error: $rootScope:infdig"
+				if($scope.cache.recycling)
+				{
+					if(angular.toJson($scope.cache.recycling) !== angular.toJson(recycling_list))
+					{
+						$scope.cache.recycling = recycling_list;
+					}
+				}
+				else
+				{
+					$scope.cache.recycling = recycling_list;
+				}
+				return $scope.cache.recycling;
 			};
 			$scope.unit_list = function(units, itemValues, transport_cost)
 			{
@@ -370,16 +462,31 @@ app.controller(
 					},
 					unit_list
 				);
-				return unit_list;
+
+				// compare with cache, return cache if equal, so angular don't get stuck in: "Error: $rootScope:infdig"
+				if($scope.cache.units)
+				{
+					if(angular.toJson($scope.cache.units) !== angular.toJson(unit_list))
+					{
+						console.log('cache.units updated');
+						console.log([$scope.cache.units, unit_list, angular.toJson($scope.cache.units), angular.toJson(unit_list)]);
+						$scope.cache.units = unit_list;
+					}
+				}
+				else
+				{
+					$scope.cache.units = unit_list;
+				}
+				return $scope.cache.units;
 			};
-			$scope.resources_flow = function(itemValues, units, factories, factoryLevel, transport_cost)
+			$scope.resources_flow = function(itemValues, units, factories, factoryLevel, transport_cost, mines)
 			{
-				factory_list = this.factory_list(factories, factoryLevel, itemValues, transport_cost);
+				let factory_list = this.factory_list(factories, factoryLevel, itemValues, transport_cost);
 				let resources_flow = {};
 				itemValues.forEach(
 					function(item_value, item_id)
 					{
-						resources_flow[item_id] = {id: item_id, in: 0, out: 0, fin: false, fout: false, type: ''};
+						resources_flow[item_id] = {id: item_id, in: 0, out: (mines[item_id] || 0), fin: false, fout: false, type: ''};
 					},
 					resources_flow
 				);
@@ -410,6 +517,9 @@ app.controller(
 					}
 				}
 				resources_flow.list = [];
+				resources_flow.in = 0;
+				resources_flow.out = 0;
+				resources_flow.profit = 0;
 				itemValues.forEach(
 					function(item_value, item_id)
 					{
@@ -422,15 +532,40 @@ app.controller(
 								{
 									resources_flow[item_id].status = 'good';
 								}
+								else if(resources_flow[item_id].in == resources_flow[item_id].out)
+								{
+									resources_flow[item_id].status = '';
+								}
+								else if(resources_flow[item_id].out <= 0)
+								{
+									resources_flow[item_id].status = 'buy';
+								}
 								else
 								{
 									resources_flow[item_id].status = 'bleading';
 								}
+								resources_flow[item_id].sort_type = 3;
 							}
 							else
 							{
 								resources_flow[item_id].type = 'resource';
-								resources_flow[item_id].status = '';
+								resources_flow[item_id].sort_type = 2;
+								if(resources_flow[item_id].in < resources_flow[item_id].out)
+								{
+									resources_flow[item_id].status = 'good';
+								}
+								else if(resources_flow[item_id].in == resources_flow[item_id].out)
+								{
+									resources_flow[item_id].status = '';
+								}
+								else if(resources_flow[item_id].out <= 0)
+								{
+									resources_flow[item_id].status = 'buy';
+								}
+								else
+								{
+									resources_flow[item_id].status = 'bleading';
+								}
 							}
 						}
 						else
@@ -439,24 +574,66 @@ app.controller(
 							{
 								resources_flow[item_id].type = 'product';
 								resources_flow[item_id].status = '';
+								resources_flow[item_id].sort_type = 3;
 							}
 							else
 							{
 								resources_flow[item_id].type = 'loot';
+								resources_flow[item_id].sort_type = 4;
 								resources_flow[item_id].status = '';
 							}
 						}
 						if(units[item_id])
 						{
 							resources_flow[item_id].type = 'unit';
+							resources_flow[item_id].sort_type = 5;
 							resources_flow[item_id].status = '';
 						}
+						resources_flow.in += resources_flow[item_id].in * item_value;
+						resources_flow.out += resources_flow[item_id].out * item_value;
+						resources_flow[item_id].profit = (resources_flow[item_id].out - resources_flow[item_id].in) * item_value;
+						if(item_id === 1 || item_id === '1')
+						{
+							resources_flow[item_id].sort_type = 1;
+							resources_flow[item_id].status = '';
+						}
+						else if(resources_flow[item_id].profit < 0)
+						{
+							resources_flow[item_id].profit = resources_flow[item_id].profit * (100 + transport_cost)/100;
+						}
+						resources_flow.profit += resources_flow[item_id].profit;
+						resources_flow[item_id].sort_value = resources_flow[item_id].sort_type + $scope.itemNames[item_id];
+
 						resources_flow.list.push(resources_flow[item_id]);
 					},
 					resources_flow
 				);
 
-				return resources_flow.list;
+				if($scope.sums.flow.in !== resources_flow.in) $scope.sums.flow.in = resources_flow.in;
+				if($scope.sums.flow.out !== resources_flow.out) $scope.sums.flow.out = resources_flow.out;
+				if($scope.sums.flow.profit !== resources_flow.profit) $scope.sums.flow.profit = resources_flow.profit;
+
+				// compare with cache, return cache if equal, so angular don't get stuck in: "Error: $rootScope:infdig"
+				if($scope.cache.flow)
+				{
+					if(angular.toJson($scope.cache.flow) !== angular.toJson(resources_flow.list))
+					{
+						$scope.cache.flow = resources_flow.list;
+					}
+				}
+				else
+				{
+					$scope.cache.flow = resources_flow.list;
+				}
+				return $scope.cache.flow;
+			};
+			$scope.ask_mine = function(id)
+			{
+				var i = prompt($scope.itemNames[id] + ' per hour', $scope.userData.mines[id]);
+				if(i !== null)
+				{
+					$scope.userData.mines[id] = parseInt(i);
+				}
 			};
 			$scope.tab = "Production";
 			$scope.tab = "Flow";
