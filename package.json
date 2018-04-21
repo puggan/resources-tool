@@ -1,0 +1,33 @@
+{
+  "name": "resources-tool",
+  "version": "0.0.1",
+  "description": "Resources Game Tool by Puggan",
+  "main": "resources.js",
+  "scripts": {
+    "dev": "webpack --mode development",
+    "build": "webpack --mode production",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/puggan/resources-tool.git"
+  },
+  "author": "Puggan Sundragon",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/puggan/resources-tool/issues"
+  },
+  "homepage": "https://github.com/puggan/resources-tool#readme",
+  "devDependencies": {
+    "ts-loader": "^4.2.0",
+    "typescript": "^2.8.3",
+    "webpack": "^4.6.0",
+    "webpack-cli": "^2.0.15"
+  },
+  "dependencies": {
+    "@types/angular": "^1.6.43",
+    "@uirouter/angularjs": "^1.0.15",
+    "angular": "^1.6.10",
+    "angularfire": "^2.3.0"
+  }
+}

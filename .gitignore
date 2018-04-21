@@ -1,6 +1,10 @@
 ### Bower
 /bower_components/
 
+### Node
+node_modules/
+npm-debug.log
+
 # Created by .ignore support plugin (hsz.mobi)
 ### Composer template
 composer.phar

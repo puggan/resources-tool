@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "outDir": "./dist/",
+    "sourceMap": true,
+    "noImplicitAny": true
+  },
+  "files": [
+    "src/resources.ts"
+  ]
+}
