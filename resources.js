@@ -24,18 +24,19 @@ app.controller(
 			$scope.signedIn = false;
 			$scope.signingIn = true;
 			$scope.username = 'Anonymous';
+			$scope.userImage = null;
 			$scope.sums = {flow: {in: 0, out: 0, profit: 0}};
 			$scope.cache = {};
-			var loadUserdata = function(uid) {
+			let loadUserdata = function(uid) {
 				if(!uid) {
-					$scope.userData = {transport_cost: 15, flow_time: "1", factoryLevel: {}, mines: {}, warehouse: {}, fake: true};
+					$scope.userData = {transport_cost: 15, flow_time: "1", gidi: 0, factoryLevel: {}, mines: {}, warehouse: {}, fake: true};
 					return $scope.userData;
 				}
-				var userData = $firebaseObject($scope.db.child('userData/' + uid));
+				let userData = $firebaseObject($scope.db.child('userData/' + uid));
 				userData.$loaded()
 					.then(function()
 					{
-						var updated = false;
+						let updated = false;
 						if(!userData.transport_cost)
 						{
 							userData.transport_cost = 15;
@@ -44,6 +45,11 @@ app.controller(
 						if(!userData.flow_time)
 						{
 							userData.flow_time = 1;
+							updated = true;
+						}
+						if(!userData.gidi && userData.gidi === 0)
+						{
+							userData.gidi = 0;
 							updated = true;
 						}
 						if(!userData.mines)
@@ -82,28 +88,42 @@ app.controller(
 						console.log("Signed in as:", firebaseUser.uid);
 						console.log(firebaseUser);
 						$scope.signedIn = true;
+						$scope.tab = "Flow";
 						$scope.username = firebaseUser.displayName;
+						$scope.userImage = firebaseUser.photoURL;
 
-						var linkedUser = $firebaseObject($scope.db.child('userLinks/' + firebaseUser.uid));
+						let linkedUser = $firebaseObject($scope.db.child('userLinks/' + firebaseUser.uid));
 						linkedUser
 							.$loaded()
 							.then(function() {
 								if(linkedUser.$value)
-									loadUserdata(linkedUser.$value);
+									loadUserdata(linkedUser.$value, firebaseUser);
 								else
-									loadUserdata(firebaseUser.uid);
+									loadUserdata(firebaseUser.uid, firebaseUser);
 							})
 							.catch(function() {
-								loadUserdata(firebaseUser.uid);
+								loadUserdata(firebaseUser.uid, firebaseUser);
 							})
 						;
+						let userInfo = $firebaseObject($scope.db.child('userInfo/' + firebaseUser.uid));
+						userInfo
+							.$loaded()
+							.then(function() {
+								userInfo.name = firebaseUser.displayName;
+								userInfo.email = firebaseUser.email;
+								userInfo.photoURL = firebaseUser.photoURL;
+								userInfo.providerId = firebaseUser.providerData[0].providerId;
+								userInfo.uid = firebaseUser.providerData[0].uid;
+								userInfo.$save();
+							});
 					}
 					else
 					{
 						console.log("Signed out");
 						$scope.signedIn = false;
 						$scope.username = 'Anonymous';
-						loadUserdata(null);
+						$scope.userImage = null;
+						loadUserdata(null, null);
 					}
 					$scope.signingIn = false;
 				}
@@ -140,7 +160,7 @@ app.controller(
 			};
 			$scope.nrformat = function(org_nr)
 			{
-				var nr = parseFloat(org_nr);
+				let nr = parseFloat(org_nr);
 				if(nr < 0)
 				{
 					return "-" + this.nrformat(-nr);
@@ -150,8 +170,9 @@ app.controller(
 					return parseInt(nr);
 				}
 
-				var sufix_list = ['', ' k', ' M', ' G', ' T', ' P', ' E', ' Z', ' Y'];
-				for(var sufix_nr = 0; sufix_nr < sufix_list.length; sufix_nr++)
+				let sufix_nr;
+				let sufix_list = ['', ' k', ' M', ' G', ' T', ' P', ' E', ' Z', ' Y'];
+				for(sufix_nr = 0; sufix_nr < sufix_list.length; sufix_nr++)
 				{
 					if(nr < 1000)
 					{
@@ -175,7 +196,7 @@ app.controller(
 			};
 			$scope.procentformat = function(org_nr, append = '%')
 			{
-				var nr = parseFloat(org_nr);
+				let nr = parseFloat(org_nr);
 				if(nr < 0)
 				{
 					return "-" + this.procentformat(-nr, append);
@@ -215,8 +236,8 @@ app.controller(
 			};
 			$scope.factory_list = function(factories, factory_levels, itemValues, transport_cost)
 			{
-				var factory_list = [];
-				for(var factory_id in factories)
+				let factory_list = [];
+				for(let factory_id in factories)
 				{
 					if(!factories.hasOwnProperty(factory_id))
 					{
@@ -227,11 +248,11 @@ app.controller(
 						continue;
 					}
 
-					var resource_count = 0;
-					var resource_value = 0;
-					var resource_transport_value = 0;
+					let resource_count = 0;
+					let resource_value = 0;
+					let resource_transport_value = 0;
 
-					var factory = factories[factory_id];
+					let factory = factories[factory_id];
 					factory.factory_id = factory_id;
 					factory.level = factory_levels[factory_id];
 					factory.next_level = factory.level + 1;
@@ -309,17 +330,17 @@ app.controller(
 					}
 					factory_list.push(factory);
 				}
-				var factory_count = factory_list.length;
-				for(var factory_rank_index = 0; factory_rank_index < factory_count; factory_rank_index++)
+				let factory_count = factory_list.length;
+				for(let factory_rank_index = 0; factory_rank_index < factory_count; factory_rank_index++)
 				{
-					var factory_rank = factory_list[factory_rank_index];
+					let factory_rank = factory_list[factory_rank_index];
 					if(factory_rank.profit > 0)
 					{
-						var profit_rank = 1;
-						var payback_rank = 1;
-						for(var factory_profit_index = 0; factory_profit_index < factory_count; factory_profit_index++)
+						let profit_rank = 1;
+						let payback_rank = 1;
+						for(let factory_profit_index = 0; factory_profit_index < factory_count; factory_profit_index++)
 						{
-							var factory_profit = factory_list[factory_profit_index];
+							let factory_profit = factory_list[factory_profit_index];
 							if(factory_profit.profit > factory_rank.profit)
 							{
 								profit_rank++;
@@ -337,7 +358,7 @@ app.controller(
 					{
 						factory_rank.profit_rank = '';
 						factory_rank.payback_rank = '';
-						factory_rank.payback_rank_sort = factory_count + factory.pos;
+						factory_rank.payback_rank_sort = factory_count + factory_rank.pos;
 					}
 				}
 
@@ -417,7 +438,7 @@ app.controller(
 						let ur = {};
 						ur.id = unit_id;
 						ur.a = dbur.a;
-						ur.aa = (ur.a < 0) && -ur.a || ur.a
+						ur.aa = (ur.a < 0) && -ur.a || ur.a;
 						ur.in = [];
 						ur.out = [];
 						ur.in_value = 0;
@@ -479,7 +500,7 @@ app.controller(
 				}
 				return $scope.cache.units;
 			};
-			$scope.resources_flow = function(itemValues, units, factories, factoryLevel, transport_cost, mines)
+			$scope.resources_flow = function(itemValues, units, factories, factoryLevel, transport_cost, mines, gidi)
 			{
 				let factory_list = this.factory_list(factories, factoryLevel, itemValues, transport_cost);
 				let resources_flow = {};
@@ -487,6 +508,8 @@ app.controller(
 					function(item_value, item_id)
 					{
 						resources_flow[item_id] = {id: item_id, in: 0, out: (mines[item_id] || 0), fin: false, fout: false, type: ''};
+						resources_flow[item_id].in_plain = resources_flow[item_id].in;
+						resources_flow[item_id].out_plain = resources_flow[item_id].out;
 					},
 					resources_flow
 				);
@@ -498,10 +521,25 @@ app.controller(
 						{
 							continue;
 						}
+						if(typeof(factory.in[item_id]) === "undefined")
+						{
+							continue;
+						}
+						if(typeof(resources_flow[item_id]) === "undefined")
+						{
+							continue;
+						}
 
 						resources_flow[item_id].fin = true;
-
-						if(factory.profit > 0) resources_flow[item_id].in += factory.speed * factory.level * factory.in[item_id];
+						if(factory.profit > 0)
+						{
+							resources_flow[item_id].in_plain += factory.speed * factory.level * factory.in[item_id];
+							resources_flow[item_id].in += factory.speed * factory.level * factory.in[item_id];
+							if(factory.profit_rank <= gidi)
+							{
+								resources_flow[item_id].in += factory.speed * factory.level * factory.in[item_id];
+							}
+						}
 					}
 
 					for(let item_id in factory.out)
@@ -510,10 +548,25 @@ app.controller(
 						{
 							continue;
 						}
+						if(typeof(factory.out[item_id]) === "undefined")
+						{
+							continue;
+						}
+						if(typeof(resources_flow[item_id]) === "undefined")
+						{
+							continue;
+						}
 
 						resources_flow[item_id].fout = true;
-
-						if(factory.profit > 0) resources_flow[item_id].out += factory.speed * factory.level * factory.out[item_id];
+						if(factory.profit > 0)
+						{
+							resources_flow[item_id].out_plain += factory.speed * factory.level * factory.out[item_id];
+							resources_flow[item_id].out += factory.speed * factory.level * factory.out[item_id];
+							if(factory.profit_rank <= gidi)
+							{
+								resources_flow[item_id].out += factory.speed * factory.level * factory.out[item_id];
+							}
+						}
 					}
 				}
 				resources_flow.list = [];
@@ -532,7 +585,7 @@ app.controller(
 								{
 									resources_flow[item_id].status = 'good';
 								}
-								else if(resources_flow[item_id].in == resources_flow[item_id].out)
+								else if(resources_flow[item_id].in === resources_flow[item_id].out)
 								{
 									resources_flow[item_id].status = '';
 								}
@@ -554,7 +607,7 @@ app.controller(
 								{
 									resources_flow[item_id].status = 'good';
 								}
-								else if(resources_flow[item_id].in == resources_flow[item_id].out)
+								else if(resources_flow[item_id].in === resources_flow[item_id].out)
 								{
 									resources_flow[item_id].status = '';
 								}
@@ -629,14 +682,13 @@ app.controller(
 			};
 			$scope.ask_mine = function(id)
 			{
-				var i = prompt($scope.itemNames[id] + ' per hour', $scope.userData.mines[id]);
+				let i = prompt($scope.itemNames[id] + ' per hour', $scope.userData.mines[id]);
 				if(i !== null)
 				{
 					$scope.userData.mines[id] = parseInt(i);
 				}
 			};
-			$scope.tab = "Production";
-			$scope.tab = "Flow";
+			$scope.tab = "Recycling";
 
 			if(!window.puggan)
 			{

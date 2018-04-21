@@ -11,27 +11,35 @@
 		<link href="resources.css" rel="stylesheet" />
 	</head>
 	<body ng-controller="Resources">
-		<h1>Resources Tools</h1>
-		<div ng-if="!signedIn && !signingIn">
-			<button ng-click="signIn('google')">Sign In with Google</button>
-			<button ng-click="signIn('facebook')">Sign In with Facebook</button>
+		<div style="display: flex">
+			<div style="padding-bottom: 5px;">
+				<h1>Resources Tools</h1>
+				<div ng-if="!signedIn && !signingIn">
+					<button ng-click="signIn('google')">Sign In with Google</button>
+					<button ng-click="signIn('facebook')">Sign In with Facebook</button>
+				</div>
+				<div ng-if="signedIn">Inloggad som <span ng-bind="username"></span> <button ng-click="signOut()">Sign Out</button></div>
+			</div>
+			<div style="padding-left: 30px; align-self: flex-end;">
+				<img ng-src="{{userImage}}" ng-show="userImage > ''" style="max-height: 100px;" />
+			</div>
+
 		</div>
-		<div ng-if="signedIn">Inloggad som <span ng-bind="username"></span> <button ng-click="signOut()">Sign Out</button></div>
 		<!-- TODO: format 0% -->
 		<ul class="tabmenu">
-			<li ng-class="tab == 'Flow' && 'selected'">
+			<li ng-class="tab == 'Flow' && 'selected'" ng-show="signedIn">
 				<label>
 					<span>Resource Flow</span>
 					<input type="radio" value="Flow" ng-model="tab" style="display: none;" />
 				</label>
 			</li>
-			<li ng-class="tab == 'Production' && 'selected'">
+			<li ng-class="tab == 'Production' && 'selected'" ng-show="signedIn">
 				<label>
 					<span>Production</span>
 					<input type="radio" value="Production" ng-model="tab" style="display: none;" />
 				</label>
 			</li>
-			<li ng-class="tab == 'Payback' && 'selected'">
+			<li ng-class="tab == 'Payback' && 'selected'" ng-show="signedIn">
 				<label>
 					<span>Upgrade Payback</span>
 					<input type="radio" value="Payback" ng-model="tab" style="display: none;" />
@@ -51,7 +59,7 @@
 			</li>
 		</ul>
 		<br style="clear: both;" />
-		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Flow'">
+		<div ng-if="itemValues.$resolved && signedIn && tab == 'Flow'">
 			<h2>Resources Flow</h2>
 			<div>
 				<label>
@@ -69,6 +77,14 @@
 						<option value="672">4 weeks</option>
 						<option value="720">30 Days</option>
 						<option value="8760">1 year</option>
+					</select>
+				</label>
+				<label>
+					<span>5DGiDi</span>
+					<select type="number" ng-model="userData.gidi">
+						<option value="0">No 5day Giant Diamon usage</option>
+						<option value="10">Top 10, 5day Giant Diamon usage, (Quest)</option>
+						<option value="25">All, 5day Giant Diamon usage</option>
 					</select>
 				</label>
 			</div>
@@ -90,7 +106,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-repeat="rf in resources_flow(itemValues, units, factories, userData.factoryLevel, userData.transport_cost, userData.mines) | orderBy:'sort_value'" class="{{rf.status}}">
+					<tr ng-repeat="rf in resources_flow(itemValues, units, factories, userData.factoryLevel, userData.transport_cost, userData.mines, userData.gidi) | orderBy:'sort_value'" class="{{rf.status}}">
 						<td style="text-align: left;">
 							<img ng-src="https://www.resources-game.ch/images/appimages/res{{rf.id}}.png" title="{{itemNames[rf.id]}}" class="tr_icon">
 							<span ng-bind="itemNames[rf.id]"></span>
@@ -110,10 +126,23 @@
 							<input ng-if="rf.id > 1" class="wherehouse_level" type="number" ng-model="userData.wherehouse[rf.id]" />
 						</td>
 						<td><span ng-if="(userData.wherehouse[rf.id] || 0) > 0" ng-bind="nrformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id])"></span></td>
-						<td><span ng-if="rf.out > 0 && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.out)"></span></td>
-						<td><span ng-if="rf.in > 0 && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.in)"></span></td>
+						<td>
+							<span ng-if="rf.out > 0 && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.out)"></span>
+							<span ng-if="rf.out > rf.out_plain && rf.out > 0 && (userData.wherehouse[rf.id] || 0) > 0">
+								<span ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.out_plain)"></span>
+							</span>
+						</td>
+						<td>
+							<span ng-if="rf.in > 0 && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.in)"></span>
+							<span ng-if="rf.in > rf.in_plain && (userData.wherehouse[rf.id] || 0) > 0">
+								(<span ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / rf.in_plain)"></span>)
+							</span>
+						</td>
 						<td>
 							<span ng-if="rf.out > 0 && rf.in > 0 && rf.out != rf.in && (userData.wherehouse[rf.id] || 0) > 0" ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / (rf.out - rf.in))"></span>
+							<span ng-if="(rf.in > rf.in_plain || rf.out > rf.out_plain) && rf.out > 0 && rf.in > 0 && rf.out != rf.in && (userData.wherehouse[rf.id] || 0) > 0">
+								(<span ng-bind="timeformat(5000 * userData.wherehouse[rf.id] * userData.wherehouse[rf.id] / (rf.out_plain - rf.in_plain))"></span>)
+							</span>
 						</td>
 					</tr>
 				</tbody>
@@ -138,7 +167,7 @@
 				</tfoot>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && !userData.fake && tab == 'Production'">
+		<div ng-if="itemValues.$resolved && signedIn && tab == 'Production'">
 			<h2>Production for factories</h2>
 			<div>
 				<label>
@@ -235,7 +264,7 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Payback'">
+		<div ng-if="itemValues.$resolved && signedIn  && tab == 'Payback'">
 			<h2>Payback for factories</h2>
 			<div>
 				<label>
@@ -300,7 +329,7 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Units'">
+		<div ng-if="itemValues.$resolved && tab == 'Units'">
 			<h2>Military Units</h2>
 			<div>
 				<label>
@@ -339,7 +368,7 @@
 				</tbody>
 			</table>
 		</div>
-		<div ng-if="itemValues.$resolved && !userData.fake  && tab == 'Recycling'">
+		<div ng-if="itemValues.$resolved && tab == 'Recycling'">
 			<h2>Recycling loot</h2>
 			<div>
 				<label>
